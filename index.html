@@ -991,7 +991,10 @@
     let localCount = 0;
     getCountFromServer(qrCol)
       .then(snap => { localCount = snap.data().count; setCount(localCount); })
-      .catch(() => {});
+      .catch(err => {
+        console.error('[Firebase] getCountFromServer failed:', err.code, err.message);
+        if (countEl) countEl.textContent = 'N/A';
+      });
 
     function setCount(n) {
       if (countEl) countEl.textContent = n.toLocaleString();
@@ -1002,7 +1005,9 @@
     onSnapshot(recentQ, snap => {
       const items = snap.docs.map(d => ({ ...d.data(), createdAt: d.data().createdAt?.toDate() }));
       renderHistory(items);
-    }, () => {});
+    }, err => {
+      console.error('[Firebase] onSnapshot failed:', err.code, err.message);
+    });
 
     function renderHistory(items) {
       if (!histList || !histSect) return;
@@ -1065,7 +1070,7 @@
         setCount(localCount);
         showToast();
       } catch (err) {
-        console.warn('Firebase tracking error:', err.message);
+        console.error('[Firebase] addDoc failed:', err.code, err.message);
       }
     };
   </script>
