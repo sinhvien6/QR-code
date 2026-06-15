@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #ede9fe 0%, #e0f2fe 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* ── Two-column card ── */
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(79,70,229,0.13);
+      width: 100%;
+      max-width: 940px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Left panel (settings) ── */
+    .left-panel {
+      padding: 36px 32px;
+      border-right: 1.5px solid #f1f0fe;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+
+    .panel-header { margin-bottom: 20px; }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #1e1b4b;
+      margin-bottom: 3px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+    }
+
+    .shield-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      color: #15803d;
+      font-size: 0.73rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Form ── */
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: #111;
+      background: #fafafa;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      border-color: #6366f1;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Color picker */
+    .color-row { display: flex; align-items: center; gap: 8px; }
+
+    input[type="color"] {
+      width: 38px;
+      height: 36px;
+      padding: 2px 3px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 7px;
+      cursor: pointer;
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+
+    .color-hex { flex: 1; }
+
+    /* Logo upload */
+    .upload-area {
+      border: 2px dashed #d1d5db;
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .upload-area:hover { border-color: #6366f1; background: #f5f3ff; }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon { font-size: 1.5rem; margin-bottom: 3px; }
+
+    .upload-text { font-size: 0.78rem; color: #6b7280; }
+    .upload-text strong { color: #6366f1; }
+
+    .logo-preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .logo-preview-wrap img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      background: #f9fafb;
+    }
+
+    .logo-name { font-size: 0.78rem; color: #555; word-break: break-all; }
+
+    .remove-logo {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #ef4444;
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1.5px solid #f3f4f6;
+      margin: 16px 0;
+    }
+
+    /* Generate button */
+    .btn-generate {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.01em;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    }
+
+    .btn-generate:hover  { opacity: 0.92; }
+    .btn-generate:active { transform: scale(0.98); }
+
+    /* Errors / blocked */
+    .error {
+      color: #ef4444;
+      font-size: 0.8rem;
+      margin-top: 5px;
+      display: none;
+    }
+
+    .blocked-banner {
+      display: none;
+      background: #fff5f5;
+      border: 1.5px solid #fca5a5;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 10px;
+    }
+
+    .blocked-banner .blocked-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 700;
+      color: #b91c1c;
+      font-size: 0.88rem;
+      margin-bottom: 3px;
+    }
+
+    .blocked-banner .blocked-desc {
+      color: #7f1d1d;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-6px); }
+      40%      { transform: translateX(6px); }
+      60%      { transform: translateX(-4px); }
+      80%      { transform: translateX(4px); }
+    }
+
+    .input-blocked { border-color: #ef4444 !important; animation: shake 0.4s ease; }
+
+    /* ── Right panel (preview) ── */
+    .right-panel {
+      background: #f8f7ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 28px 28px 24px;
+      min-height: 520px;
+      position: relative;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      border: 1.5px solid #ede9fe;
+      border-radius: 12px;
+      padding: 10px 16px;
+      margin-bottom: 22px;
+      flex-shrink: 0;
+    }
+
+    .stats-item { line-height: 1.2; }
+
+    .stats-num {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #4f46e5;
+    }
+
+    .stats-label {
+      display: block;
+      font-size: 0.68rem;
+      color: #9ca3af;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .firebase-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #ea580c;
+      background: #fff7ed;
+      border: 1.5px solid #fdba74;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* Preview area (centers QR / placeholder) */
+    .preview-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    /* History */
+    .history-section {
+      width: 100%;
+      margin-top: 18px;
+      border-top: 1.5px solid #ede9fe;
+      padding-top: 12px;
+      flex-shrink: 0;
+    }
+
+    .history-header {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a78bfa;
+      margin-bottom: 8px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 7px 8px;
+      border-radius: 8px;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+
+    .history-item:hover { background: #f0ebff; }
+    .history-icon { font-size: 0.9rem; margin-top: 1px; flex-shrink: 0; }
+
+    .history-content {
+      font-size: 0.78rem;
+      color: #374151;
+      font-weight: 500;
+      word-break: break-all;
+      line-height: 1.3;
+    }
+
+    .history-meta {
+      font-size: 0.68rem;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    /* Save toast */
+    .save-toast {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(50px);
+      background: #1e1b4b;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .save-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* Empty state */
+    .qr-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: #c4b5fd;
+    }
+
+    .qr-placeholder .placeholder-box {
+      width: 180px;
+      height: 180px;
+      border: 3px dashed #ddd6fe;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+
+    .qr-placeholder p {
+      font-size: 0.88rem;
+      text-align: center;
+      color: #a78bfa;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* QR output */
+    .output { display: none; flex-direction: column; align-items: center; gap: 0; }
+    .output.visible { display: flex; }
+
+    .output-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 14px;
+    }
+
+    #qr-canvas {
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.14);
+      max-width: 100%;
+    }
+
+    .output-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .btn-download {
+      padding: 10px 22px;
+      background: #10b981;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      box-shadow: 0 3px 10px rgba(16,185,129,0.3);
+    }
+
+    .btn-download:hover { background: #059669; }
+
+    .btn-regenerate {
+      padding: 10px 18px;
+      background: #fff;
+      color: #6366f1;
+      border: 1.5px solid #c7d2fe;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-regenerate:hover { background: #f5f3ff; }
+
+    /* Responsive: stack on small screens */
+    @media (max-width: 700px) {
+      .card { grid-template-columns: 1fr; }
+      .left-panel { border-right: none; border-bottom: 1.5px solid #f1f0fe; max-height: none; }
+      .right-panel { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- ── Left: Settings ── -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <h1>QR Code Generator</h1>
+        <p class="subtitle">Create branded QR codes with your logo</p>
+        <div class="shield-badge">&#128737; Content Protection Active</div>
+      </div>
+
+      <div class="field">
+        <label for="qr-text">Content (URL or text)</label>
+        <input type="text" id="qr-text" placeholder="https://example.com" />
+        <div class="error" id="text-error">Please enter some content for the QR code.</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>QR Color</label>
+          <div class="color-row">
+            <input type="color" id="qr-color" value="#000000" />
+            <input type="text" id="qr-color-hex" class="color-hex" value="#000000" maxlength="7" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Background</label>
+          <div class="color-row">
+            <input type="color" id="bg-color" value="#ffffff" />
+            <input type="text" id="bg-color-hex" class="color-hex" value="#ffffff" maxlength="7" />
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="qr-size">Size (px)</label>
+          <select id="qr-size">
+            <option value="200">200 × 200</option>
+            <option value="300" selected>300 × 300</option>
+            <option value="400">400 × 400</option>
+            <option value="600">600 × 600</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="error-level">Error Correction</label>
+          <select id="error-level">
+            <option value="L">Low (7%)</option>
+            <option value="M">Medium (15%)</option>
+            <option value="Q" selected>Quartile (25%)</option>
+            <option value="H">High (30%)</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="field">
+        <label>Logo (optional)</label>
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="logo-input" accept="image/*" />
+          <div class="upload-icon">🖼️</div>
+          <div class="upload-text"><strong>Click to upload</strong> or drag & drop<br/>PNG, JPG, SVG, WebP</div>
+        </div>
+        <div class="logo-preview-wrap" id="logo-preview-wrap" style="display:none">
+          <img id="logo-thumb" src="" alt="logo" />
+          <span class="logo-name" id="logo-name"></span>
+          <button class="remove-logo" id="remove-logo" title="Remove logo">✕</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="logo-size">Logo size (% of QR)</label>
+        <input type="text" id="logo-size" value="22" placeholder="e.g. 22" />
+      </div>
+
+      <button class="btn-generate" id="btn-generate">&#9889; Generate QR Code</button>
+
+      <div class="blocked-banner" id="blocked-banner">
+        <div class="blocked-title">&#128683; <span id="blocked-title-text"></span></div>
+        <div class="blocked-desc" id="blocked-desc"></div>
+      </div>
+      <div class="error" id="gen-error" style="display:none;margin-top:10px;"></div>
+    </div>
+
+    <!-- ── Right: Preview ── -->
+    <div class="right-panel">
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stats-item">
+          <span class="stats-num" id="total-count">—</span>
+          <span class="stats-label">QR codes tracked</span>
+        </div>
+        <div class="firebase-badge">&#128293; Firebase</div>
+      </div>
+
+      <!-- QR preview -->
+      <div class="preview-area">
+        <div class="qr-placeholder" id="qr-placeholder">
+          <div class="placeholder-box">&#9974;&#65039;</div>
+          <p>Your QR code will<br>appear here</p>
+        </div>
+
+        <div class="output" id="output">
+          <div class="output-label">Preview</div>
+          <canvas id="qr-canvas"></canvas>
+          <div class="output-actions">
+            <button class="btn-download" id="btn-download">&#8595; Download PNG</button>
+            <button class="btn-regenerate" id="btn-regenerate">&#8635; Regenerate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent history -->
+      <div class="history-section" id="history-section" style="display:none">
+        <div class="history-header">&#128336; Recent</div>
+        <div id="history-list"></div>
+      </div>
+
+      <!-- Save toast -->
+      <div class="save-toast" id="save-toast">&#10003; Logged to Firebase</div>
+
+    </div>
+
+  </div>
+
+  <!-- QR code library (local copy) -->
+  <script src="qrgen.js"></script>
+  <script>
+    const qrTextEl      = document.getElementById('qr-text');
+    const qrColorEl     = document.getElementById('qr-color');
+    const qrColorHex    = document.getElementById('qr-color-hex');
+    const bgColorEl     = document.getElementById('bg-color');
+    const bgColorHex    = document.getElementById('bg-color-hex');
+    const qrSizeEl      = document.getElementById('qr-size');
+    const errorLevelEl  = document.getElementById('error-level');
+    const logoInput     = document.getElementById('logo-input');
+    const logoPreview   = document.getElementById('logo-preview-wrap');
+    const logoThumb     = document.getElementById('logo-thumb');
+    const logoNameEl    = document.getElementById('logo-name');
+    const removeLogoBtn = document.getElementById('remove-logo');
+    const logoSizeEl    = document.getElementById('logo-size');
+    const generateBtn   = document.getElementById('btn-generate');
+    const regenerateBtn = document.getElementById('btn-regenerate');
+    const output        = document.getElementById('output');
+    const placeholder   = document.getElementById('qr-placeholder');
+    const canvas        = document.getElementById('qr-canvas');
+    const downloadBtn   = document.getElementById('btn-download');
+    const textError     = document.getElementById('text-error');
+    const genError      = document.getElementById('gen-error');
+    const blockedBanner = document.getElementById('blocked-banner');
+    const blockedTitle  = document.getElementById('blocked-title-text');
+    const blockedDesc   = document.getElementById('blocked-desc');
+
+    /* ── Content Filter ──────────────────────────────────────────── */
+    const ContentFilter = (function () {
+      // Leet-speak + invisible char normalization
+      function norm(s) {
+        return s.toLowerCase()
+          .replace(/[​-‏⁠﻿]/g, '')
+          .replace(/[@4]/g, 'a').replace(/3/g, 'e').replace(/[1!|]/g, 'i')
+          .replace(/0/g, 'o').replace(/[$5]/g, 's').replace(/7/g, 't');
+      }
+
+      // Collapse spaced-out evasion: "k i l l" → "kill" (3+ single chars)
+      function normSpaced(s) {
+        return s.replace(/\b([a-zA-Z]( [a-zA-Z]){2,})\b/g, m => m.replace(/ /g, ''));
+      }
+
+      // Strip Vietnamese diacritics for normalized matching
+      function normVi(s) {
+        return s.toLowerCase()
+          .replace(/[àáảãạăắặằẵẳâấầẩẫậ]/g, 'a')
+          .replace(/[èéẻẽẹêếềểễệ]/g, 'e')
+          .replace(/[ìíỉĩị]/g, 'i')
+          .replace(/[òóỏõọôốồổỗộơớờởỡợ]/g, 'o')
+          .replace(/[ùúủũụưứừửữự]/g, 'u')
+          .replace(/[ỳýỷỹỵ]/g, 'y')
+          .replace(/[đĐ]/g, 'd')
+          .replace(/\s+/g, ' ').trim();
+      }
+
+      // Each rule receives: (raw, leet-normed, spaced-normed, vi-normed)
+      const RULES = [
+        {
+          label: 'Threatening Content',
+          desc:  'This content contains threats of violence or harm against a person and cannot be encoded into a QR code.',
+          test:  (raw, n, sp, vi) => {
+            const enPat = /\b(i('?ll?| will| am going to| gonna)\s+(kill|murder|shoot|stab|hurt|harm|attack)\s+(you|him|her|them|everyone)|kill\s+(yourself|urself|all|everyone)|death\s+threat|bomb\s+threat|bomb\s+(the|a)\s+\w+|shoot\s+(up|the\s+school|the\s+place|you)|i\s+want\s+(you|him|her|them)\s+(dead|to\s+die)|you('?re|\s+are)\s+going\s+to\s+die|i\s+know\s+where\s+you\s+(live|are))\b/i;
+            // Vietnamese threats: "tao/tôi/mình/t sẽ giết/đánh/chém mày/m/b/n..."
+            // "t" = tao (I), "mk" = mình (me) — common chat abbreviations
+            // Object abbreviations: "m" = mày, "b" = bạn, "n" = nó, "e" = em
+            const viRaw = /(tao|tôi|mình|mk)\s+(s[eẽ]\s+)?(gi[eế]t|đ[aá]nh(\s+ch[eế]t)?|ch[eé]m|b[aắ]n|h[aà]nh\s+h[aạ])\s*(m[aà]y|b[aạ]n|anh|ch[iị]|em|n[oó]|h[aắ]n|c[aả]\s+nh[aà]|t[aấ]t\s+c[aả])|gi[eế]t\s+m[aà]y|tao\s+bi[eế]t\s+(nh[aà]\s+m[aà]y|m[aà]y\s+[oở]\s+đ[aâ]u)/i;
+            const viNorm = /(tao|toi|minh|mk)\s+(se\s+)?(giet|danh(\s+chet)?|chem|ban|hanh\s+ha)\s*(may|ban|anh|chi|em|no|han|ca\s+nha|tat\s+ca)|giet\s+may|tao\s+biet\s+(nha\s+may|may\s+o\s+dau)/i;
+            // Abbreviated chat form: "t sẽ giết m", "t giết m", "t đánh n", etc.
+            const viAbbrevRaw = /\bt\s+(s[eẽ]\s+)?(gi[eế]t|đ[aá]nh(\s+ch[eế]t)?|ch[eé]m|b[aắ]n)\s+[mbne]\b/i;
+            const viAbbrevNorm = /\bt\s+(se\s+)?(giet|danh(\s+chet)?|chem|ban)\s+[mbne]\b/i;
+            return enPat.test(raw) || enPat.test(n) || enPat.test(sp)
+                || viRaw.test(raw) || viNorm.test(vi)
+                || viAbbrevRaw.test(raw) || viAbbrevNorm.test(vi);
+          }
+        },
+        {
+          label: 'Adult / NSFW Content',
+          desc:  'URLs or text linking to 18+ or explicit adult content are not permitted.',
+          test:  (raw, n, sp, vi) => {
+            const enSites = /\b(pornhub|xvideos|xnxx|xhamster|redtube|youporn|tube8|brazzers|bangbros|chaturbate|onlyfans|livejasmin|cam4|myfreecams|stripchat|naughtyamerica|realitykings|nhentai|rule34|gelbooru|e621|hentaihaven|javhd|jav(bus|most|guru)|sexvid)\b/i;
+            const enPath  = /\.(xxx|adult|porn|sex)\b|\/(porn|xxx|hentai|nsfw|nude|naked|adult-?\w*)\//i;
+            // Vietnamese adult content
+            const viRaw = /\b(phim\s+sex|sex\s+vi[eệ]t|g[aá]i\s+g[oọ]i|m[aạ]i\s+d[aâ]m|quan\s+h[eệ]\s+t[iì]nh\s+d[uụ]c\s+tr[eẻ]\s+em|xem\s+phim\s+sex|video\s+sex\s+vi[eệ]t)\b/i;
+            const viNorm = /\b(phim\s+sex|sex\s+viet|gai\s+goi|mai\s+dam|quan\s+he\s+tinh\s+duc\s+tre\s+em|xem\s+phim\s+sex|video\s+sex\s+viet)\b/i;
+            return enSites.test(raw) || enPath.test(raw) || viRaw.test(raw) || viNorm.test(vi);
+          }
+        },
+        {
+          label: 'Hate Speech / Racism',
+          desc:  'This content contains racial slurs, hate speech, or language that discriminates based on ethnicity, religion, or identity.',
+          test:  (raw, n, sp, vi) => {
+            const slurs = /\bn[i!1|][g9][g9][e3]r\b|\bn[i!1|][g9][g9][a4]\b|\bch[i!1|]nk\b|\bsp[i!1|][ck]\b|\bk[i!1|]k[e3]\b|\bg[o0]{2}k\b|\bwetb[a4]ck\b|\bbeaner\b|\br[a4]gh[e3][a4]d\b|\bs[a4]ndn[i!1|][g9]{2}[e3]r\b|\bcr[a4]ck[e3]r\b/i;
+            const enHate = /\b(white\s+supremac|white\s+power|heil\s+hitler|14\s*words|race\s+war|ethnic\s+cleans(ing)?|final\s+solution|gas\s+the\s+(jews?|blacks?|muslims?)|hang\s+(all\s+)?(blacks?|whites?|jews?)|holocaust\s+den(ial|y)|death\s+to\s+(all\s+)?(jews?|muslims?|christians?|blacks?|whites?|gays?|lesbians?))\b/i;
+            // Vietnamese hate speech / ethnic discrimination
+            const viRaw = /\b(ng[ưu][oờ]i\s+(m[oọ]i|man\s+r[ợ]|d[aả]\s+man)|ch[uừ]ng\s+m[aà]y\s+kh[oô]ng\s+đ[aá]ng\s+s[oố]ng|b[oọ]n\s+(ch[uừ]ng\s+)?(l[aừ]o|kh[aằ]ch|m[iĩ])\s+kh[oô]ng\s+ra\s+g[iì])\b/i;
+            const viNorm = /\b(nguoi\s+(moi|man\s+ro|da\s+man)|chung\s+may\s+khong\s+dang\s+song|bon\s+(chung\s+)?(lao|khach|mi)\s+khong\s+ra\s+gi)\b/i;
+            return slurs.test(raw) || slurs.test(n) || enHate.test(raw) || viRaw.test(raw) || viNorm.test(vi);
+          }
+        },
+        {
+          label: 'Harassment / Self-harm',
+          desc:  'Content encouraging self-harm, suicide, or targeted harassment of individuals is not allowed.',
+          test:  (raw, n, sp, vi) => {
+            const enPat = /\b(go\s+(die|kill\s+yourself)|just\s+die\b|drop\s+dead|die\s+already|kys\b|end\s+your(self|\s+life)|you\s+should\s+(die|be\s+dead)|nobody\s+(loves?|wants?)\s+you|cut\s+yourself|hang\s+yourself|shoot\s+yourself|swatt?ing\b|doxx(ing|ed)?\b)/i;
+            // Vietnamese self-harm / death commands
+            // "chết đi" = go die, "đi chết đi" = stronger form, "chết cho rồi" = just die already
+            // "m" = mày (you) — common abbreviated pronoun in chat
+            const viRaw = /\b(ch[eế]t\s+đ[iị](\s+th[oô]i|\s+cho\s+r[oồ]i)?|đ[iị]\s+ch[eế]t\s+đ[iị]|t[uự]\s+t[uử]\s+đ[iị]|h[aã]y\s+t[uự]\s+t[uử]|(m[aà]y|m)\s+(n[eê]n|h[aã]y)\s+(ch[eế]t|t[uự]\s+t[uử])|t[uự]\s+c[aắ]t\s+(tay|c[oổ])|t[uự]\s+treo\s+c[oổ]|kh[oô]ng\s+ai\s+(y[eê]u|c[aầ]n)\s+(m[aà]y|m)|(m[aà]y|m)\s+ch[iỉ]\s+là\s+r[aá]c)\b/i;
+            const viNorm = /\b(chet\s+di(\s+thoi|\s+cho\s+roi)?|di\s+chet\s+di|tu\s+tu\s+di|hay\s+tu\s+tu|(may|m)\s+(nen|hay)\s+(chet|tu\s+tu)|tu\s+cat\s+(tay|co)|tu\s+treo\s+co|khong\s+ai\s+(yeu|can)\s+(may|m)|(may|m)\s+chi\s+la\s+rac)\b/i;
+            return enPat.test(raw) || enPat.test(n) || viRaw.test(raw) || viNorm.test(vi);
+          }
+        },
+        {
+          label: 'Dangerous / Illegal Activity',
+          desc:  'Content that promotes or instructs illegal or dangerous activities is blocked.',
+          test:  (raw, n, sp, vi) => {
+            const enPat = /\b(buy\s+(drugs?|meth|heroin|cocaine|fentanyl|weapons?|guns?|ammo)\s+online|(sell|selling)\s+(drugs?|stolen|counterfeit)|child\s+(porn|sex|abuse|grooming|exploitation)|cp\s+link|pedophil|darkweb\s+(market|drug|weapon))\b/i;
+            // Vietnamese drug / child exploitation
+            const viRaw = /\b(mua\s+(ma\s+t[uú]y|h[eế]roin|c[oọ]caine|thu[oố]c\s+l[aắ]c|c[aầ]n\s+sa)\s*(online|tr[eê]n\s+m[aạ]ng)?|(b[aá]n|mua)\s+v[uũ]\s+kh[iíị]|x[aâ]m\s+h[aạ]i\s+t[iì]nh\s+d[uụ]c\s+tr[eẻ]\s+em|b[oọ]c\s+l[oộ]t\s+tr[eẻ]\s+em)\b/i;
+            const viNorm = /\b(mua\s+(ma\s+tuy|heroin|cocaine|thuoc\s+lac|can\s+sa)\s*(online|tren\s+mang)?|(ban|mua)\s+vu\s+khi|xam\s+hai\s+tinh\s+duc\s+tre\s+em|boc\s+lot\s+tre\s+em)\b/i;
+            return enPat.test(raw) || enPat.test(n) || viRaw.test(raw) || viNorm.test(vi);
+          }
+        },
+        {
+          label: 'Obscene / Abusive Language',
+          desc:  'This content contains severely offensive or abusive language that is not permitted.',
+          test:  (raw, n, sp, vi) => {
+            // Vietnamese severe profanity (equivalent to strongest English expletives)
+            const viRaw = /\b(đ[uụ][cck]?\s*m[eẹ]|đ[iị]t\s*m[eẹ]|đ[uụ][cck]?\s*m[aà]y|đ[iị]t\s*m[aà]y|c[uụ]\s*m[aà]y|c[aắ]c\s*m[aà]y|l[oồ]n\s*m[eẹ]|con\s*(đĩ|đ[iị]|đ[uụ])|v[aã][iị]\s*l[oề]n|đ[aâ]m\s*b[uụ])\b/i;
+            const viNorm = /\b(du[ck]?\s*me|dit\s*me|du[ck]?\s*may|dit\s*may|cu\s*may|cac\s*may|lon\s*me|con\s*(di|du[ck]?)|vai\s*lon|dam\s*bu)\b/i;
+            return viRaw.test(raw) || viNorm.test(vi);
+          }
+        },
+      ];
+
+      return {
+        check(text) {
+          const n  = norm(text);
+          const sp = normSpaced(n);
+          const vi = normVi(text);
+          for (const rule of RULES) {
+            if (rule.test(text, n, sp, vi)) {
+              return { blocked: true, label: rule.label, desc: rule.desc };
+            }
+          }
+          return { blocked: false };
+        }
+      };
+    })();
+    /* ─────────────────────────────────────────────────────────────── */
+
+    let logoDataUrl = null;
+
+    qrTextEl.addEventListener('input', () => {
+      blockedBanner.style.display = 'none';
+      textError.style.display = 'none';
+    });
+
+    // Color sync
+    function syncColor(picker, hex) {
+      picker.addEventListener('input', () => { hex.value = picker.value; });
+      hex.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value;
+      });
+    }
+    syncColor(qrColorEl, qrColorHex);
+    syncColor(bgColorEl, bgColorHex);
+
+    // Logo upload
+    logoInput.addEventListener('change', () => {
+      const file = logoInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        logoDataUrl = e.target.result;
+        logoThumb.src = logoDataUrl;
+        logoNameEl.textContent = file.name;
+        logoPreview.style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    removeLogoBtn.addEventListener('click', () => {
+      logoDataUrl = null;
+      logoInput.value = '';
+      logoPreview.style.display = 'none';
+    });
+
+    // Drag & drop
+    const uploadArea = document.getElementById('upload-area');
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor = '#6366f1'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        logoInput.files = dt.files;
+        logoInput.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Buttons
+    generateBtn.addEventListener('click', () => {
+      generate().catch(err => {
+        genError.textContent = 'Error: ' + (err.message || 'QR generation failed.');
+        genError.style.display = 'block';
+        console.error(err);
+      });
+    });
+
+    regenerateBtn.addEventListener('click', () => {
+      generate().catch(err => {
+        genError.textContent = 'Error: ' + (err.message || 'QR generation failed.');
+        genError.style.display = 'block';
+        console.error(err);
+      });
+    });
+
+    function showBlocked(label, desc) {
+      blockedTitle.textContent = label;
+      blockedDesc.textContent  = desc;
+      blockedBanner.style.display = 'block';
+      qrTextEl.classList.add('input-blocked');
+      qrTextEl.addEventListener('animationend', () => qrTextEl.classList.remove('input-blocked'), { once: true });
+    }
+
+    async function generate() {
+      genError.style.display      = 'none';
+      blockedBanner.style.display = 'none';
+
+      const text = qrTextEl.value.trim();
+      if (!text) {
+        textError.style.display = 'block';
+        qrTextEl.focus();
+        return;
+      }
+      textError.style.display = 'none';
+
+      const filterResult = ContentFilter.check(text);
+      if (filterResult.blocked) {
+        showBlocked(filterResult.label, filterResult.desc);
+        return;
+      }
+
+      if (typeof qrcode === 'undefined') {
+        throw new Error('QR library failed to load. Make sure qrgen.js is in the same folder as index.html.');
+      }
+
+      const size     = parseInt(qrSizeEl.value, 10);
+      const fgColor  = qrColorEl.value || '#000000';
+      const bgColor  = bgColorEl.value || '#ffffff';
+      qrColorHex.value = fgColor;
+      bgColorHex.value = bgColor;
+      const errLevel = errorLevelEl.value;
+      const logoPct  = Math.min(40, Math.max(5, parseFloat(logoSizeEl.value) || 22)) / 100;
+
+      const ctx = await renderQR(text, size, fgColor, bgColor, errLevel);
+
+      if (logoDataUrl) {
+        await overlayLogo(ctx, size, logoPct);
+      }
+
+      placeholder.style.display = 'none';
+      output.classList.add('visible');
+
+      // Firebase tracking (non-blocking)
+      window.trackQR?.({
+        content:    text,
+        size:       size,
+        fgColor:    fgColor,
+        bgColor:    bgColor,
+        errorLevel: errLevel,
+        hasLogo:    !!logoDataUrl,
+      });
+    }
+
+    function renderQR(text, size, fgColor, bgColor, errLevel) {
+      // Force UTF-8 byte encoding so Vietnamese (and all Unicode) encodes correctly
+      qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+      const qr = qrcode(0, errLevel); // type 0 = auto-detect version
+      qr.addData(text, 'Byte');
+      qr.make();
+
+      const moduleCount = qr.getModuleCount();
+      // Reserve ~12% of the size on each side as quiet zone (QR spec: ≥4 modules)
+      const quietFraction = 0.1;
+      const totalCells    = moduleCount + Math.round(moduleCount * quietFraction * 2);
+      const cellSize      = size / totalCells;
+      const offset        = Math.round((totalCells - moduleCount) / 2) * cellSize;
+
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Background (quiet zone included)
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, size, size);
+
+      // QR modules
+      ctx.fillStyle = fgColor;
+      for (let row = 0; row < moduleCount; row++) {
+        for (let col = 0; col < moduleCount; col++) {
+          if (qr.isDark(row, col)) {
+            ctx.fillRect(
+              Math.floor(offset + col * cellSize),
+              Math.floor(offset + row * cellSize),
+              Math.ceil(cellSize),
+              Math.ceil(cellSize)
+            );
+          }
+        }
+      }
+
+      return Promise.resolve(ctx);
+    }
+
+    function overlayLogo(ctx, size, logoPct) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const logoSize = size * logoPct;
+          const padding  = logoSize * 0.15;
+          const boxSize  = logoSize + padding * 2;
+          const x = (size - boxSize) / 2;
+          const y = (size - boxSize) / 2;
+
+          ctx.save();
+          roundRect(ctx, x, y, boxSize, boxSize, boxSize * 0.15);
+          ctx.fillStyle   = '#ffffff';
+          ctx.shadowColor = 'rgba(0,0,0,0.18)';
+          ctx.shadowBlur  = 8;
+          ctx.fill();
+          ctx.restore();
+
+          ctx.drawImage(img, x + padding, y + padding, logoSize, logoSize);
+          resolve();
+        };
+        img.onerror = resolve;
+        img.src = logoDataUrl;
+      });
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'qrcode.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+
+  <!-- Firebase integration -->
+  <script type="module">
+    import { initializeApp }     from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getAnalytics, logEvent } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js';
+    import {
+      getFirestore, collection, addDoc, serverTimestamp,
+      onSnapshot, query, orderBy, limit, getCountFromServer
+    } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+    const app = initializeApp({
+      apiKey:            "AIzaSyAubRWeV-M7GSw670_AiJ3GY2x4nJTiU2A",
+      authDomain:        "qrcode-a06b5.firebaseapp.com",
+      projectId:         "qrcode-a06b5",
+      storageBucket:     "qrcode-a06b5.firebasestorage.app",
+      messagingSenderId: "697511671691",
+      appId:             "1:697511671691:web:cfa0edcf2603d94854a18e",
+      measurementId:     "G-KHG878J3J0"
+    });
+
+    const db        = getFirestore(app);
+    const analytics = getAnalytics(app);
+    const qrCol     = collection(db, 'qr_generations');
+
+    const countEl   = document.getElementById('total-count');
+    const histList  = document.getElementById('history-list');
+    const histSect  = document.getElementById('history-section');
+    const toast     = document.getElementById('save-toast');
+
+    // ── Total count (fetched once, then incremented locally) ──
+    let localCount = 0;
+    getCountFromServer(qrCol)
+      .then(snap => { localCount = snap.data().count; setCount(localCount); })
+      .catch(() => {});
+
+    function setCount(n) {
+      if (countEl) countEl.textContent = n.toLocaleString();
+    }
+
+    // ── Live recent history (last 5) ──
+    const recentQ = query(qrCol, orderBy('createdAt', 'desc'), limit(5));
+    onSnapshot(recentQ, snap => {
+      const items = snap.docs.map(d => ({ ...d.data(), createdAt: d.data().createdAt?.toDate() }));
+      renderHistory(items);
+    }, () => {});
+
+    function renderHistory(items) {
+      if (!histList || !histSect) return;
+      if (items.length === 0) { histSect.style.display = 'none'; return; }
+      histSect.style.display = 'block';
+      histList.innerHTML = items.map(item => {
+        const icon    = /^https?:\/\//i.test(item.content) ? '&#128279;' : '&#128196;';
+        const preview = item.content.length > 36 ? item.content.slice(0, 36) + '…' : item.content;
+        const ago     = item.createdAt ? timeAgo(item.createdAt) : 'just now';
+        return `<div class="history-item">
+          <span class="history-icon">${icon}</span>
+          <div>
+            <div class="history-content">${esc(preview)}</div>
+            <div class="history-meta">${item.size ?? ''}px &middot; ${item.errorLevel ?? ''} &middot; ${ago}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function timeAgo(d) {
+      const s = Math.floor((Date.now() - d) / 1000);
+      if (s < 60)    return 'just now';
+      if (s < 3600)  return Math.floor(s / 60)   + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600)  + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+
+    function esc(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Toast ──
+    function showToast() {
+      if (!toast) return;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ── Public API for main script ──
+    window.trackQR = async function (data) {
+      try {
+        await addDoc(qrCol, {
+          content:    data.content,
+          size:       data.size,
+          fgColor:    data.fgColor,
+          bgColor:    data.bgColor,
+          errorLevel: data.errorLevel,
+          hasLogo:    data.hasLogo,
+          createdAt:  serverTimestamp(),
+        });
+
+        logEvent(analytics, 'qr_generated', {
+          content_length: data.content.length,
+          size:           data.size,
+          has_logo:       data.hasLogo,
+          error_level:    data.errorLevel,
+        });
+
+        localCount++;
+        setCount(localCount);
+        showToast();
+      } catch (err) {
+        console.warn('Firebase tracking error:', err.message);
+      }
+    };
+  </script>
+</body>
+</html>
